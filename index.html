@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMI30 Portfolio Allocator | PSX</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #070d18;
+            --bg-secondary: #0d1523;
+            --bg-card: #111e30;
+            --bg-card-hover: #162540;
+            --accent-green: #00e676;
+            --accent-green-dim: #00c853;
+            --accent-gold: #fbbf24;
+            --accent-blue: #38bdf8;
+            --text-primary: #e2e8f0;
+            --text-secondary: #64748b;
+            --border: #1e3050;
+            --border-light: #253a58;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        header {
+            background: linear-gradient(135deg, #0a1628 0%, #0f2040 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 1.25rem 2.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #00e676, #00897b);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #070d18;
+            letter-spacing: -0.5px;
+            flex-shrink: 0;
+        }
+
+        .header-text h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-text p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 1px;
+        }
+
+        .header-badge {
+            margin-left: auto;
+            background: rgba(0, 230, 118, 0.1);
+            border: 1px solid rgba(0, 230, 118, 0.25);
+            color: var(--accent-green);
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.3rem 0.7rem;
+            border-radius: 20px;
+            letter-spacing: 0.04em;
+        }
+
+        /* ── Main layout ── */
+        main {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 2rem 2.5rem;
+        }
+
+        /* ── Input section ── */
+        .input-section {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+        }
+
+        .card-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: #94a3b8;
+            font-family: 'Courier New', monospace;
+            font-size: 0.72rem;
+            line-height: 1.5;
+            padding: 0.85rem 1rem;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus { border-color: rgba(0, 230, 118, 0.4); }
+
+        textarea::placeholder { color: #2a3d55; }
+
+        .field-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.45rem;
+            margin-top: 1.25rem;
+            display: block;
+        }
+
+        .field-label:first-of-type { margin-top: 0; }
+
+        .amount-input-wrapper {
+            position: relative;
+        }
+
+        .amount-input-wrapper span {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 1.05rem;
+            font-weight: 600;
+            padding: 0.75rem 1rem 0.75rem 2.8rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="number"]:focus { border-color: rgba(0, 230, 118, 0.4); }
+
+        input[type="number"]::placeholder { color: #2a3d55; font-weight: 400; }
+
+        .btn-calculate {
+            width: 100%;
+            background: linear-gradient(135deg, #00e676 0%, #00c853 50%, #00897b 100%);
+            color: #070d18;
+            border: none;
+            border-radius: 10px;
+            padding: 0.9rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 1.25rem;
+            letter-spacing: 0.02em;
+        }
+
+        .btn-calculate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(0, 200, 83, 0.35);
+        }
+
+        .btn-calculate:active { transform: translateY(0); }
+
+        .divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 1.25rem 0;
+        }
+
+        .how-it-works p {
+            font-size: 0.775rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            padding-left: 0.3rem;
+            border-left: 2px solid var(--border-light);
+            margin-bottom: 0.3rem;
+            padding-left: 0.6rem;
+        }
+
+        .error-box {
+            display: none;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+            border-radius: 8px;
+            padding: 0.7rem 1rem;
+            font-size: 0.82rem;
+            margin-top: 0.75rem;
+            line-height: 1.5;
+        }
+
+        /* ── Results section ── */
+        #resultsSection { display: none; }
+        #resultsSection.visible { display: block; }
+
+        /* Stats bar */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.1rem 1.25rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            border-radius: 2px 2px 0 0;
+        }
+
+        .stat-card.green::before { background: linear-gradient(90deg, #00e676, #00897b); }
+        .stat-card.gold::before { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+        .stat-card.blue::before { background: linear-gradient(90deg, #38bdf8, #0ea5e9); }
+        .stat-card.purple::before { background: linear-gradient(90deg, #a78bfa, #7c3aed); }
+
+        .stat-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 0.4rem;
+        }
+
+        .stat-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-value.green { color: var(--accent-green); }
+        .stat-value.gold { color: var(--accent-gold); }
+        .stat-value.blue { color: var(--accent-blue); }
+        .stat-value.purple { color: #a78bfa; }
+
+        .stat-sub {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 0.15rem;
+        }
+
+        /* Chart + Table grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 1.25rem;
+        }
+
+        /* Chart card */
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .chart-card .card-label { align-self: flex-start; width: 100%; }
+
+        .chart-wrapper {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            margin: 0.5rem 0;
+        }
+
+        .chart-center-label {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .chart-center-label .cl-title {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .chart-center-label .cl-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            margin-top: 0.2rem;
+        }
+
+        .chart-legend {
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0;
+            border-bottom: 1px solid rgba(30, 48, 80, 0.5);
+            font-size: 0.75rem;
+        }
+
+        .legend-item:last-child { border-bottom: none; }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-sym {
+            font-weight: 700;
+            color: var(--text-primary);
+            min-width: 62px;
+            font-size: 0.72rem;
+            font-family: monospace;
+        }
+
+        .legend-pct {
+            margin-left: auto;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Table card */
+        .table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .table-header-bar {
+            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .total-line {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .total-line span {
+            color: var(--accent-gold);
+            font-weight: 700;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            padding: 0.7rem 1.25rem;
+            text-align: left;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            background: rgba(0, 0, 0, 0.2);
+            white-space: nowrap;
+        }
+
+        thead th:nth-child(6) { text-align: right; }
+
+        tbody tr {
+            border-top: 1px solid rgba(30, 48, 80, 0.6);
+            transition: background 0.12s;
+        }
+
+        tbody tr:hover { background: var(--bg-card-hover); }
+
+        tbody td {
+            padding: 0.8rem 1.25rem;
+            font-size: 0.85rem;
+            vertical-align: middle;
+        }
+
+        .rank {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-variant-numeric: tabular-nums;
+            width: 28px;
+        }
+
+        .symbol-pill {
+            display: inline-block;
+            background: rgba(0, 230, 118, 0.08);
+            color: var(--accent-green);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+            border-radius: 6px;
+            padding: 0.2rem 0.55rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            font-family: monospace;
+            white-space: nowrap;
+        }
+
+        .company-name {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .orig-weight {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .adj-weight-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .adj-weight-val {
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            min-width: 46px;
+            font-size: 0.83rem;
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 5px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 3px;
+            overflow: hidden;
+            min-width: 60px;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .invest-amount {
+            text-align: right;
+            font-weight: 700;
+            color: var(--accent-gold);
+            font-size: 0.88rem;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        /* Footer row */
+        tfoot td {
+            padding: 0.85rem 1.25rem;
+            font-size: 0.82rem;
+            background: rgba(0,0,0,0.25);
+            border-top: 2px solid var(--border-light);
+        }
+
+        .foot-total {
+            font-weight: 700;
+            color: var(--accent-gold);
+            text-align: right;
+            font-size: 0.92rem;
+        }
+
+        .foot-label {
+            font-weight: 700;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .results-grid { grid-template-columns: 1fr; }
+            .chart-card { flex-direction: row; flex-wrap: wrap; gap: 1rem; }
+            .chart-wrapper { width: 200px; height: 200px; }
+        }
+
+        @media (max-width: 800px) {
+            .input-section { grid-template-columns: 1fr; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            main { padding: 1.25rem; }
+            header { padding: 1rem 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">KMI</div>
+    <div class="header-text">
+        <h1>KMI30 Portfolio Allocator</h1>
+        <p>Pakistan Stock Exchange · Index Weight Calculator</p>
+    </div>
+    <div class="header-badge">PSX · KMI30</div>
+</header>
+
+<main>
+    <!-- Input -->
+    <div class="input-section">
+        <div class="card">
+            <div class="card-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                Paste PSX Table Data
+            </div>
+            <textarea id="rawData" placeholder="Copy and paste the stock table directly from the PSX website here.
+
+The table should include columns like:
+SYMBOL  NAME  LDCP  CURRENT  CHANGE  CHANGE (%)  IDX WTG (%)  ...
+
+All 15 rows will be extracted automatically."></textarea>
+            <div class="error-box" id="errorBox"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-label">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                Investment Settings
+            </div>
+
+            <label class="field-label">Total Investment Amount (PKR)</label>
+            <div class="amount-input-wrapper">
+                <span>Rs</span>
+                <input type="number" id="investmentAmount" placeholder="e.g. 1000000" min="1" step="1">
+            </div>
+
+            <button class="btn-calculate" onclick="calculate()">
+                Calculate Allocation →
+            </button>
+
+            <hr class="divider">
+
+            <div class="card-label" style="margin-bottom: 0.7rem;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+                How It Works
+            </div>
+            <div class="how-it-works">
+                <p>Paste the raw PSX KMI30 table from the website</p>
+                <p>The first 15 stocks by index weight are extracted</p>
+                <p>Weights are normalised so they sum to exactly 100%</p>
+                <p>Your investment is split proportionally across all stocks</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsSection">
+        <div class="stats-row">
+            <div class="stat-card gold">
+                <div class="stat-label">Total Investment</div>
+                <div class="stat-value gold" id="statTotal">—</div>
+                <div class="stat-sub">PKR</div>
+            </div>
+            <div class="stat-card blue">
+                <div class="stat-label">Stocks in Portfolio</div>
+                <div class="stat-value blue" id="statStocks">—</div>
+                <div class="stat-sub">from KMI30</div>
+            </div>
+            <div class="stat-card purple">
+                <div class="stat-label">Original Weight Sum</div>
+                <div class="stat-value purple" id="statOrigSum">—</div>
+                <div class="stat-sub">of KMI30 total</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-label">Normalisation Factor</div>
+                <div class="stat-value green" id="statMultiplier">—</div>
+                <div class="stat-sub">applied to all weights</div>
+            </div>
+        </div>
+
+        <div class="results-grid">
+            <!-- Donut chart -->
+            <div class="chart-card">
+                <div class="card-label">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 010 20"/><path d="M12 2v10l6.5 6.5"/></svg>
+                    Portfolio Allocation
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="allocationChart"></canvas>
+                    <div class="chart-center-label">
+                        <div class="cl-title">Total</div>
+                        <div class="cl-value" id="chartCenterVal">—</div>
+                    </div>
+                </div>
+                <div class="chart-legend" id="chartLegend"></div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-card">
+                <div class="table-header-bar">
+                    <div class="card-label" style="margin-bottom: 0;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3h18v4H3zM3 10h18v4H3zM3 17h18v4H3z"/></svg>
+                        Allocation Breakdown
+                    </div>
+                    <div class="total-line">Adjusted weights sum: <span>100.00%</span></div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Symbol</th>
+                            <th>Company</th>
+                            <th>Orig. Weight</th>
+                            <th>Adj. Weight</th>
+                            <th style="text-align:right;">Investment (PKR)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody"></tbody>
+                    <tfoot id="resultsTableFoot"></tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    let chartInstance = null;
+
+    const PALETTE = [
+        '#00e676','#38bdf8','#fbbf24','#f472b6','#a78bfa',
+        '#fb923c','#34d399','#60a5fa','#e879f9','#facc15',
+        '#4ade80','#22d3ee','#c084fc','#fb7185','#fdba74'
+    ];
+
+    function fmt(n) {
+        return n.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function fmtPKR(n) {
+        return 'Rs ' + fmt(n);
+    }
+
+    function escHtml(s) {
+        const d = document.createElement('div');
+        d.appendChild(document.createTextNode(String(s)));
+        return d.innerHTML;
+    }
+
+    function showError(msg) {
+        const box = document.getElementById('errorBox');
+        box.textContent = msg;
+        box.style.display = 'block';
+    }
+
+    function clearError() {
+        const box = document.getElementById('errorBox');
+        box.style.display = 'none';
+    }
+
+    function parseData(raw) {
+        const lines = raw.trim().split('\n').filter(l => l.trim());
+
+        // Detect separator: try tab first, then multiple spaces
+        let sep = '\t';
+        const firstFew = lines.slice(0, 5).join('\n');
+        if (!firstFew.includes('\t')) {
+            // Fallback: treat consecutive whitespace as separator
+            sep = null;
+        }
+
+        function splitLine(line) {
+            if (sep === '\t') return line.split('\t').map(c => c.trim());
+            // space-separated fallback
+            return line.trim().split(/\s{2,}/).map(c => c.trim());
+        }
+
+        // Find header row
+        let headerIdx = -1;
+        let headers = [];
+        for (let i = 0; i < lines.length; i++) {
+            const cols = splitLine(lines[i]);
+            if (cols.some(c => /IDX\s*WTG/i.test(c))) {
+                headerIdx = i;
+                headers = cols;
+                break;
+            }
+        }
+
+        if (headerIdx === -1) {
+            throw new Error(
+                'Could not find the "IDX WTG (%)" column. ' +
+                'Make sure you copy the full table header from the PSX website.'
+            );
+        }
+
+        const symbolIdx = headers.findIndex(h => /^SYMBOL$/i.test(h));
+        const nameIdx   = headers.findIndex(h => /^NAME$/i.test(h));
+        const wgtIdx    = headers.findIndex(h => /IDX\s*WTG/i.test(h));
+
+        if (symbolIdx === -1) throw new Error('Could not find SYMBOL column.');
+        if (nameIdx   === -1) throw new Error('Could not find NAME column.');
+
+        const stocks = [];
+
+        for (let i = headerIdx + 1; i < lines.length && stocks.length < 15; i++) {
+            const cols = splitLine(lines[i]);
+            if (cols.length <= wgtIdx) continue;
+
+            const symbol = cols[symbolIdx];
+            const name   = cols[nameIdx];
+            const wgtRaw = cols[wgtIdx].replace(/[%,\s]/g, '');
+            const weight = parseFloat(wgtRaw);
+
+            if (!symbol || isNaN(weight)) continue;
+
+            stocks.push({ symbol, name, originalWeight: weight });
+        }
+
+        if (stocks.length === 0) {
+            throw new Error('No valid stock rows found after the header. Please check the pasted data.');
+        }
+
+        return stocks;
+    }
+
+    function calculate() {
+        clearError();
+
+        const raw    = document.getElementById('rawData').value;
+        const amount = parseFloat(document.getElementById('investmentAmount').value);
+
+        if (!raw.trim()) {
+            showError('Please paste the PSX stock data before calculating.');
+            return;
+        }
+
+        if (!amount || amount <= 0) {
+            showError('Please enter a valid investment amount greater than zero.');
+            return;
+        }
+
+        let stocks;
+        try {
+            stocks = parseData(raw);
+        } catch (e) {
+            showError(e.message);
+            return;
+        }
+
+        // Normalise weights
+        const origSum    = stocks.reduce((s, x) => s + x.originalWeight, 0);
+        const multiplier = 100 / origSum;
+
+        stocks.forEach(s => {
+            s.adjWeight = parseFloat((s.originalWeight * multiplier).toFixed(2));
+        });
+
+        // Fix any rounding drift so adjusted sum is exactly 100.00
+        const adjSum = stocks.reduce((s, x) => s + x.adjWeight, 0);
+        const drift  = parseFloat((100 - adjSum).toFixed(2));
+        if (drift !== 0) stocks[0].adjWeight = parseFloat((stocks[0].adjWeight + drift).toFixed(2));
+
+        // Investment per stock
+        stocks.forEach(s => {
+            s.investment = parseFloat(((s.adjWeight / 100) * amount).toFixed(2));
+        });
+
+        // ── Stats ──
+        document.getElementById('statTotal').textContent     = fmtPKR(amount);
+        document.getElementById('statStocks').textContent    = stocks.length;
+        document.getElementById('statOrigSum').textContent   = origSum.toFixed(2) + '%';
+        document.getElementById('statMultiplier').textContent = multiplier.toFixed(4) + 'x';
+        document.getElementById('chartCenterVal').textContent = fmtPKR(amount);
+
+        renderTable(stocks, amount);
+        renderChart(stocks, amount);
+
+        const section = document.getElementById('resultsSection');
+        section.style.display = 'block';
+        section.classList.add('visible');
+        setTimeout(() => section.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
+
+    function renderTable(stocks, totalAmount) {
+        const maxWeight = Math.max(...stocks.map(s => s.adjWeight));
+
+        const tbody = document.getElementById('resultsTableBody');
+        tbody.innerHTML = stocks.map((s, i) => {
+            const color   = PALETTE[i % PALETTE.length];
+            const barPct  = (s.adjWeight / maxWeight * 100).toFixed(1);
+            return `
+            <tr>
+                <td class="rank">${i + 1}</td>
+                <td><span class="symbol-pill" style="color:${color}; border-color:${color}30; background:${color}10;">${escHtml(s.symbol)}</span></td>
+                <td><div class="company-name" title="${escHtml(s.name)}">${escHtml(s.name)}</div></td>
+                <td class="orig-weight">${s.originalWeight.toFixed(2)}%</td>
+                <td>
+                    <div class="adj-weight-cell">
+                        <span class="adj-weight-val">${s.adjWeight.toFixed(2)}%</span>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width:${barPct}%; background:${color};"></div>
+                        </div>
+                    </div>
+                </td>
+                <td class="invest-amount">${fmtPKR(s.investment)}</td>
+            </tr>`;
+        }).join('');
+
+        const tfoot = document.getElementById('resultsTableFoot');
+        tfoot.innerHTML = `
+            <tr>
+                <td colspan="3" class="foot-label">Total (15 stocks)</td>
+                <td class="orig-weight" style="font-weight:700; color: var(--text-primary);">${stocks.reduce((a,s)=>a+s.originalWeight,0).toFixed(2)}%</td>
+                <td style="font-weight:700; color: var(--accent-green);">100.00%</td>
+                <td class="foot-total">${fmtPKR(totalAmount)}</td>
+            </tr>`;
+    }
+
+    function renderChart(stocks, totalAmount) {
+        const ctx = document.getElementById('allocationChart').getContext('2d');
+
+        if (chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: stocks.map(s => s.symbol),
+                datasets: [{
+                    data: stocks.map(s => s.adjWeight),
+                    backgroundColor: PALETTE.slice(0, stocks.length).map(c => c + 'cc'),
+                    borderColor: '#111e30',
+                    borderWidth: 2,
+                    hoverBorderColor: '#ffffff',
+                    hoverBorderWidth: 2,
+                    hoverOffset: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '68%',
+                animation: { animateRotate: true, duration: 700 },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#162540',
+                        borderColor: '#1e3050',
+                        borderWidth: 1,
+                        titleColor: '#e2e8f0',
+                        bodyColor: '#94a3b8',
+                        padding: 12,
+                        callbacks: {
+                            label: ctx => {
+                                const s = stocks[ctx.dataIndex];
+                                return [
+                                    `  Weight: ${s.adjWeight.toFixed(2)}%`,
+                                    `  Amount: ${fmtPKR(s.investment)}`
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Legend
+        const leg = document.getElementById('chartLegend');
+        leg.innerHTML = stocks.map((s, i) => `
+            <div class="legend-item">
+                <div class="legend-dot" style="background:${PALETTE[i]};"></div>
+                <span class="legend-sym">${escHtml(s.symbol)}</span>
+                <span style="color:var(--text-primary); font-size:0.72rem; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(s.name)}</span>
+                <span class="legend-pct">${s.adjWeight.toFixed(2)}%</span>
+            </div>
+        `).join('');
+    }
+
+    // Allow Enter key on amount field
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('investmentAmount').addEventListener('keydown', e => {
+            if (e.key === 'Enter') calculate();
+        });
+    });
+</script>
+</body>
+</html>
