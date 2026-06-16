@@ -525,6 +525,77 @@
             letter-spacing: 0.06em;
         }
 
+        /* ── Fetch button ── */
+        .btn-fetch {
+            width: 100%;
+            background: transparent;
+            color: var(--accent-blue);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            border-radius: 10px;
+            padding: 0.7rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .btn-fetch:hover:not(:disabled) {
+            background: rgba(56, 189, 248, 0.08);
+            border-color: rgba(56, 189, 248, 0.6);
+        }
+
+        .btn-fetch:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .btn-fetch.success {
+            color: var(--accent-green);
+            border-color: rgba(0, 230, 118, 0.35);
+        }
+
+        .btn-fetch.error-state {
+            color: #f87171;
+            border-color: rgba(248, 113, 113, 0.35);
+        }
+
+        .spinner {
+            width: 13px;
+            height: 13px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .fetch-status {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 0.75rem;
+            min-height: 1rem;
+        }
+
+        .or-divider {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+        }
+
+        .or-divider::before, .or-divider::after {
+            content: '';
+            flex: 1;
+            border-top: 1px solid var(--border);
+        }
+
         /* Responsive */
         @media (max-width: 1100px) {
             .results-grid { grid-template-columns: 1fr; }
@@ -557,8 +628,17 @@
         <div class="card">
             <div class="card-label">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-                Paste PSX Table Data
+                PSX KMI30 Data
             </div>
+
+            <button class="btn-fetch" id="btnFetch" onclick="fetchLiveData()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                Fetch Live Data from PSX
+            </button>
+            <div class="fetch-status" id="fetchStatus"></div>
+
+            <div class="or-divider">or paste manually</div>
+
             <textarea id="rawData" placeholder="Copy and paste the stock table directly from the PSX website here.
 
 The table should include columns like:
@@ -591,9 +671,9 @@ All 15 rows will be extracted automatically."></textarea>
                 How It Works
             </div>
             <div class="how-it-works">
-                <p>Paste the raw PSX KMI30 table from the website</p>
-                <p>The first 15 stocks by index weight are extracted</p>
-                <p>Weights are normalised so they sum to exactly 100%</p>
+                <p>Click "Fetch Live Data" to pull directly from PSX</p>
+                <p>Or paste the KMI30 table manually as a fallback</p>
+                <p>Top 15 stocks by weight are extracted and normalised to 100%</p>
                 <p>Your investment is split proportionally across all stocks</p>
             </div>
         </div>
@@ -919,6 +999,49 @@ All 15 rows will be extracted automatically."></textarea>
                 <span class="legend-pct">${s.adjWeight.toFixed(2)}%</span>
             </div>
         `).join('');
+    }
+
+    async function fetchLiveData() {
+        const btn    = document.getElementById('btnFetch');
+        const status = document.getElementById('fetchStatus');
+
+        btn.disabled = true;
+        btn.className = 'btn-fetch';
+        btn.innerHTML = '<div class="spinner"></div> Fetching from PSX…';
+        status.textContent = '';
+        clearError();
+
+        try {
+            const resp = await fetch('/api/kmi30');
+            const data = await resp.json();
+
+            if (data.error) throw new Error(data.error);
+            if (!data.stocks || data.stocks.length === 0) throw new Error('No stocks returned from PSX.');
+
+            // Format as TSV the parser already understands
+            const tsv = [
+                'SYMBOL\tNAME\tIDX WTG (%)',
+                ...data.stocks.map(s => `${s.symbol}\t${s.name}\t${s.weight}%`)
+            ].join('\n');
+
+            document.getElementById('rawData').value = tsv;
+
+            const time = new Date(data.fetchedAt).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' });
+            btn.className = 'btn-fetch success';
+            btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> ${data.count} stocks loaded`;
+            status.textContent = `Live data from dps.psx.com.pk · as of ${time}`;
+
+            // If investment amount is already filled, calculate immediately
+            const amount = parseFloat(document.getElementById('investmentAmount').value);
+            if (amount > 0) calculate();
+
+        } catch (err) {
+            btn.className = 'btn-fetch error-state';
+            btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg> Fetch failed`;
+            status.textContent = String(err.message || err);
+        } finally {
+            btn.disabled = false;
+        }
     }
 
     // Allow Enter key on amount field
