@@ -204,6 +204,65 @@
             margin: 1.25rem 0;
         }
 
+        /* ── Stock count slider ── */
+        .stock-count-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.45rem;
+        }
+
+        .stock-count-badge {
+            background: rgba(0, 230, 118, 0.1);
+            border: 1px solid rgba(0, 230, 118, 0.25);
+            color: var(--accent-green);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.15rem 0.55rem;
+            border-radius: 20px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: var(--border-light);
+            border-radius: 2px;
+            outline: none;
+            margin-bottom: 0.35rem;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            cursor: pointer;
+            box-shadow: 0 0 0 3px rgba(0,230,118,0.15);
+            transition: box-shadow 0.15s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            box-shadow: 0 0 0 5px rgba(0,230,118,0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            cursor: pointer;
+            border: none;
+        }
+
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+        }
+
         .how-it-works p {
             font-size: 0.775rem;
             color: var(--text-secondary);
@@ -654,6 +713,13 @@ All 15 rows will be extracted automatically."></textarea>
                 Investment Settings
             </div>
 
+            <div class="stock-count-row">
+                <label class="field-label" style="margin:0;">Number of Top Stocks</label>
+                <span class="stock-count-badge" id="stockCountBadge">Top 15</span>
+            </div>
+            <input type="range" id="stockCount" min="1" max="30" value="15" oninput="updateStockCount()">
+            <div class="range-labels"><span>1</span><span>30</span></div>
+
             <label class="field-label">Total Investment Amount (PKR)</label>
             <div class="amount-input-wrapper">
                 <span>Rs</span>
@@ -690,7 +756,7 @@ All 15 rows will be extracted automatically."></textarea>
             <div class="stat-card blue">
                 <div class="stat-label">Stocks in Portfolio</div>
                 <div class="stat-value blue" id="statStocks">—</div>
-                <div class="stat-sub">from KMI30</div>
+                <div class="stat-sub">top by weight</div>
             </div>
             <div class="stat-card purple">
                 <div class="stat-label">Original Weight Sum</div>
@@ -828,7 +894,7 @@ All 15 rows will be extracted automatically."></textarea>
 
         const stocks = [];
 
-        for (let i = headerIdx + 1; i < lines.length && stocks.length < 15; i++) {
+        for (let i = headerIdx + 1; i < lines.length; i++) {
             const cols = splitLine(lines[i]);
             if (cols.length <= wgtIdx) continue;
 
@@ -849,11 +915,17 @@ All 15 rows will be extracted automatically."></textarea>
         return stocks;
     }
 
+    function updateStockCount() {
+        const n = document.getElementById('stockCount').value;
+        document.getElementById('stockCountBadge').textContent = `Top ${n}`;
+    }
+
     function calculate() {
         clearError();
 
         const raw    = document.getElementById('rawData').value;
         const amount = parseFloat(document.getElementById('investmentAmount').value);
+        const topN   = parseInt(document.getElementById('stockCount').value, 10);
 
         if (!raw.trim()) {
             showError('Please paste the PSX stock data before calculating.');
@@ -872,6 +944,10 @@ All 15 rows will be extracted automatically."></textarea>
             showError(e.message);
             return;
         }
+
+        // Slice to the chosen top-N (data is already sorted heaviest-first from the API;
+        // for manual paste it comes in PSX order which is heaviest-first too)
+        stocks = stocks.slice(0, topN);
 
         // Normalise weights
         const origSum    = stocks.reduce((s, x) => s + x.originalWeight, 0);
@@ -935,7 +1011,7 @@ All 15 rows will be extracted automatically."></textarea>
         const tfoot = document.getElementById('resultsTableFoot');
         tfoot.innerHTML = `
             <tr>
-                <td colspan="3" class="foot-label">Total (15 stocks)</td>
+                <td colspan="3" class="foot-label">Total (${stocks.length} stocks)</td>
                 <td class="orig-weight" style="font-weight:700; color: var(--text-primary);">${stocks.reduce((a,s)=>a+s.originalWeight,0).toFixed(2)}%</td>
                 <td style="font-weight:700; color: var(--accent-green);">100.00%</td>
                 <td class="foot-total">${fmtPKR(totalAmount)}</td>
