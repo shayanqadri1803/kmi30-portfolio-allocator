@@ -1012,7 +1012,10 @@ All 15 rows will be extracted automatically."></textarea>
         clearError();
 
         try {
-            const resp = await fetch('/api/kmi30');
+            const apiBase = window.location.protocol === 'file:'
+                ? 'https://kmi30-portfolio-allocator.vercel.app'
+                : '';
+            const resp = await fetch(`${apiBase}/api/kmi30`);
             const data = await resp.json();
 
             if (data.error) throw new Error(data.error);
