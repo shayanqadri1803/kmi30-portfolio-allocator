@@ -35,7 +35,12 @@ module.exports = async function handler(req, res) {
       const weight = parseFloat(wtgM[1]);
       if (!name || isNaN(weight)) continue;
 
-      stocks.push({ symbol, name, weight });
+      // CURRENT price: second plain numeric <td class="right" data-order="NNN">
+      // (first is LDCP, second is CURRENT — both have no extra classes)
+      const numericTds = [...row.matchAll(/<td class="right" data-order="([\d.]+)">([\d,.]+)<\/td>/g)];
+      const price = numericTds.length > 1 ? parseFloat(numericTds[1][1]) : 0;
+
+      stocks.push({ symbol, name, weight, price });
     }
 
     // Sort heaviest first (PSX returns them alphabetically)

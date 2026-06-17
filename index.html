@@ -116,9 +116,16 @@
             gap: 0.4rem;
         }
 
+        /* Paste card stretches to match settings card height */
+        .input-section .card:first-child {
+            display: flex;
+            flex-direction: column;
+        }
+
         textarea {
             width: 100%;
-            height: 200px;
+            flex: 1;
+            min-height: 120px;
             background: var(--bg-secondary);
             border: 1px solid var(--border);
             border-radius: 10px;
@@ -127,7 +134,7 @@
             font-size: 0.72rem;
             line-height: 1.5;
             padding: 0.85rem 1rem;
-            resize: vertical;
+            resize: none;
             outline: none;
             transition: border-color 0.2s;
         }
@@ -292,7 +299,7 @@
         /* Stats bar */
         .stats-row {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 1rem;
             margin-bottom: 1.25rem;
         }
@@ -437,6 +444,11 @@
             border: 1px solid var(--border);
             border-radius: 16px;
             overflow: hidden;
+            min-width: 0;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
         }
 
         .table-header-bar {
@@ -524,39 +536,46 @@
             font-variant-numeric: tabular-nums;
         }
 
-        .adj-weight-cell {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-        }
-
         .adj-weight-val {
             font-weight: 600;
             font-variant-numeric: tabular-nums;
-            min-width: 46px;
             font-size: 0.83rem;
         }
 
-        .bar-track {
-            flex: 1;
-            height: 5px;
-            background: rgba(255,255,255,0.04);
-            border-radius: 3px;
-            overflow: hidden;
-            min-width: 60px;
-        }
-
-        .bar-fill {
-            height: 100%;
-            border-radius: 3px;
-            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
         .invest-amount {
-            text-align: right;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.83rem;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .shares-val {
+            font-weight: 700;
+            color: var(--accent-blue);
+            font-size: 0.88rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .actual-cost-val {
             font-weight: 700;
             color: var(--accent-gold);
-            font-size: 0.88rem;
+            font-size: 0.83rem;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .leftover-val {
+            font-weight: 600;
+            color: var(--accent-green);
+            font-size: 0.83rem;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .price-val {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
         }
@@ -660,6 +679,10 @@
             .results-grid { grid-template-columns: 1fr; }
             .chart-card { flex-direction: row; flex-wrap: wrap; gap: 1rem; }
             .chart-wrapper { width: 200px; height: 200px; }
+        }
+
+        @media (max-width: 1200px) {
+            .stats-row { grid-template-columns: repeat(3, 1fr); }
         }
 
         @media (max-width: 800px) {
@@ -768,6 +791,12 @@ All 15 rows will be extracted automatically."></textarea>
                 <div class="stat-value green" id="statMultiplier">—</div>
                 <div class="stat-sub">applied to all weights</div>
             </div>
+            <div class="stat-card" style="--card-accent: #a78bfa;">
+                <div style="position:absolute;top:0;left:0;right:0;height:2px;border-radius:2px 2px 0 0;background:linear-gradient(90deg,#a78bfa,#7c3aed);"></div>
+                <div class="stat-label">Cash Remaining</div>
+                <div class="stat-value" style="color:#a78bfa;" id="statLeftover">—</div>
+                <div class="stat-sub">after whole shares</div>
+            </div>
         </div>
 
         <div class="results-grid">
@@ -796,20 +825,25 @@ All 15 rows will be extracted automatically."></textarea>
                     </div>
                     <div class="total-line">Adjusted weights sum: <span>100.00%</span></div>
                 </div>
+                <div class="table-scroll">
                 <table>
                     <thead>
                         <tr>
                             <th>#</th>
                             <th>Symbol</th>
                             <th>Company</th>
-                            <th>Orig. Weight</th>
                             <th>Adj. Weight</th>
-                            <th style="text-align:right;">Investment (PKR)</th>
+                            <th>Price / Share</th>
+                            <th>Allocated</th>
+                            <th>Shares</th>
+                            <th>Actual Cost</th>
+                            <th>Leftover</th>
                         </tr>
                     </thead>
                     <tbody id="resultsTableBody"></tbody>
                     <tfoot id="resultsTableFoot"></tfoot>
                 </table>
+                </div>
             </div>
         </div>
     </div>
@@ -888,6 +922,7 @@ All 15 rows will be extracted automatically."></textarea>
         const symbolIdx = headers.findIndex(h => /^SYMBOL$/i.test(h));
         const nameIdx   = headers.findIndex(h => /^NAME$/i.test(h));
         const wgtIdx    = headers.findIndex(h => /IDX\s*WTG/i.test(h));
+        const priceIdx  = headers.findIndex(h => /^CURRENT$/i.test(h) || /^PRICE$/i.test(h));
 
         if (symbolIdx === -1) throw new Error('Could not find SYMBOL column.');
         if (nameIdx   === -1) throw new Error('Could not find NAME column.');
@@ -905,7 +940,10 @@ All 15 rows will be extracted automatically."></textarea>
 
             if (!symbol || isNaN(weight)) continue;
 
-            stocks.push({ symbol, name, originalWeight: weight });
+            const priceRaw = priceIdx >= 0 && cols[priceIdx] ? cols[priceIdx].replace(/[,\s]/g, '') : '';
+            const price    = parseFloat(priceRaw) || 0;
+
+            stocks.push({ symbol, name, originalWeight: weight, price });
         }
 
         if (stocks.length === 0) {
@@ -962,16 +1000,26 @@ All 15 rows will be extracted automatically."></textarea>
         const drift  = parseFloat((100 - adjSum).toFixed(2));
         if (drift !== 0) stocks[0].adjWeight = parseFloat((stocks[0].adjWeight + drift).toFixed(2));
 
-        // Investment per stock
+        // Investment per stock + shares breakdown
         stocks.forEach(s => {
             s.investment = parseFloat(((s.adjWeight / 100) * amount).toFixed(2));
+            if (s.price > 0) {
+                s.shares     = Math.floor(s.investment / s.price);
+                s.actualCost = parseFloat((s.shares * s.price).toFixed(2));
+                s.leftover   = parseFloat((s.investment - s.actualCost).toFixed(2));
+            } else {
+                s.shares = null; s.actualCost = null; s.leftover = null;
+            }
         });
 
+        const totalLeftover = stocks.reduce((sum, s) => sum + (s.leftover ?? 0), 0);
+
         // ── Stats ──
-        document.getElementById('statTotal').textContent     = fmtPKR(amount);
-        document.getElementById('statStocks').textContent    = stocks.length;
-        document.getElementById('statOrigSum').textContent   = origSum.toFixed(2) + '%';
+        document.getElementById('statTotal').textContent      = fmtPKR(amount);
+        document.getElementById('statStocks').textContent     = stocks.length;
+        document.getElementById('statOrigSum').textContent    = origSum.toFixed(2) + '%';
         document.getElementById('statMultiplier').textContent = multiplier.toFixed(4) + 'x';
+        document.getElementById('statLeftover').textContent   = fmtPKR(totalLeftover);
         document.getElementById('chartCenterVal').textContent = fmtPKR(amount);
 
         renderTable(stocks, amount);
@@ -984,37 +1032,42 @@ All 15 rows will be extracted automatically."></textarea>
     }
 
     function renderTable(stocks, totalAmount) {
-        const maxWeight = Math.max(...stocks.map(s => s.adjWeight));
-
         const tbody = document.getElementById('resultsTableBody');
         tbody.innerHTML = stocks.map((s, i) => {
-            const color   = PALETTE[i % PALETTE.length];
-            const barPct  = (s.adjWeight / maxWeight * 100).toFixed(1);
+            const color = PALETTE[i % PALETTE.length];
+            const sharesHtml     = s.shares     !== null ? `<span class="shares-val">${s.shares.toLocaleString()}</span>`          : '<span style="color:var(--text-secondary)">—</span>';
+            const actualCostHtml = s.actualCost !== null ? `<span class="actual-cost-val">${fmtPKR(s.actualCost)}</span>`          : '<span style="color:var(--text-secondary)">—</span>';
+            const leftoverHtml   = s.leftover   !== null ? `<span class="leftover-val">${fmtPKR(s.leftover)}</span>`               : '<span style="color:var(--text-secondary)">—</span>';
+            const priceHtml      = s.price       > 0     ? `<span class="price-val">${fmtPKR(s.price)}</span>`                     : '<span style="color:var(--text-secondary)">—</span>';
             return `
             <tr>
                 <td class="rank">${i + 1}</td>
-                <td><span class="symbol-pill" style="color:${color}; border-color:${color}30; background:${color}10;">${escHtml(s.symbol)}</span></td>
+                <td><span class="symbol-pill" style="color:${color};border-color:${color}30;background:${color}10;">${escHtml(s.symbol)}</span></td>
                 <td><div class="company-name" title="${escHtml(s.name)}">${escHtml(s.name)}</div></td>
-                <td class="orig-weight">${s.originalWeight.toFixed(2)}%</td>
-                <td>
-                    <div class="adj-weight-cell">
-                        <span class="adj-weight-val">${s.adjWeight.toFixed(2)}%</span>
-                        <div class="bar-track">
-                            <div class="bar-fill" style="width:${barPct}%; background:${color};"></div>
-                        </div>
-                    </div>
-                </td>
-                <td class="invest-amount">${fmtPKR(s.investment)}</td>
+                <td><span class="adj-weight-val">${s.adjWeight.toFixed(2)}%</span></td>
+                <td>${priceHtml}</td>
+                <td><span class="invest-amount">${fmtPKR(s.investment)}</span></td>
+                <td>${sharesHtml}</td>
+                <td>${actualCostHtml}</td>
+                <td>${leftoverHtml}</td>
             </tr>`;
         }).join('');
+
+        const totalShares     = stocks.reduce((sum, s) => sum + (s.shares ?? 0), 0);
+        const totalActualCost = stocks.reduce((sum, s) => sum + (s.actualCost ?? 0), 0);
+        const totalLeftover   = stocks.reduce((sum, s) => sum + (s.leftover ?? 0), 0);
+        const hasPrices       = stocks.some(s => s.price > 0);
 
         const tfoot = document.getElementById('resultsTableFoot');
         tfoot.innerHTML = `
             <tr>
                 <td colspan="3" class="foot-label">Total (${stocks.length} stocks)</td>
-                <td class="orig-weight" style="font-weight:700; color: var(--text-primary);">${stocks.reduce((a,s)=>a+s.originalWeight,0).toFixed(2)}%</td>
-                <td style="font-weight:700; color: var(--accent-green);">100.00%</td>
-                <td class="foot-total">${fmtPKR(totalAmount)}</td>
+                <td style="font-weight:700;color:var(--accent-green);">100.00%</td>
+                <td></td>
+                <td style="font-weight:700;color:var(--text-primary);white-space:nowrap;">${fmtPKR(totalAmount)}</td>
+                <td style="font-weight:700;color:var(--accent-blue);">${hasPrices ? totalShares.toLocaleString() : '—'}</td>
+                <td style="font-weight:700;color:var(--accent-gold);white-space:nowrap;">${hasPrices ? fmtPKR(totalActualCost) : '—'}</td>
+                <td style="font-weight:700;color:#a78bfa;white-space:nowrap;">${hasPrices ? fmtPKR(totalLeftover) : '—'}</td>
             </tr>`;
     }
 
@@ -1099,8 +1152,8 @@ All 15 rows will be extracted automatically."></textarea>
 
             // Format as TSV the parser already understands
             const tsv = [
-                'SYMBOL\tNAME\tIDX WTG (%)',
-                ...data.stocks.map(s => `${s.symbol}\t${s.name}\t${s.weight}%`)
+                'SYMBOL\tNAME\tIDX WTG (%)\tCURRENT',
+                ...data.stocks.map(s => `${s.symbol}\t${s.name}\t${s.weight}%\t${s.price}`)
             ].join('\n');
 
             document.getElementById('rawData').value = tsv;
