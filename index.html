@@ -604,6 +604,35 @@
             letter-spacing: 0.06em;
         }
 
+        /* ── Copy button ── */
+        .btn-copy {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 7px;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .btn-copy:hover {
+            color: var(--text-primary);
+            border-color: var(--accent-blue);
+            background: rgba(56, 189, 248, 0.06);
+        }
+
+        .btn-copy.copied {
+            color: var(--accent-green);
+            border-color: rgba(0, 230, 118, 0.4);
+            background: rgba(0, 230, 118, 0.06);
+        }
+
         /* ── Fetch button ── */
         .btn-fetch {
             width: 100%;
@@ -824,7 +853,13 @@ All 15 rows will be extracted automatically."></textarea>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3h18v4H3zM3 10h18v4H3zM3 17h18v4H3z"/></svg>
                         Allocation Breakdown
                     </div>
-                    <div class="total-line">Adjusted weights sum: <span>100.00%</span></div>
+                    <div style="display:flex;align-items:center;gap:0.75rem;">
+                        <div class="total-line">Adjusted weights sum: <span>100.00%</span></div>
+                        <button class="btn-copy" id="btnCopy" onclick="copyTable()">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            Copy Table
+                        </button>
+                    </div>
                 </div>
                 <div class="table-scroll">
                 <table>
@@ -852,6 +887,8 @@ All 15 rows will be extracted automatically."></textarea>
 
 <script>
     let chartInstance = null;
+    let lastStocks = null;
+    let lastAmount = 0;
 
     const PALETTE = [
         '#00e676','#38bdf8','#fbbf24','#f472b6','#a78bfa',
@@ -954,6 +991,39 @@ All 15 rows will be extracted automatically."></textarea>
         return stocks;
     }
 
+    async function copyTable() {
+        if (!lastStocks || lastStocks.length === 0) return;
+
+        const headers = ['Symbol', 'Company', 'Adj. Weight (%)', 'Price (PKR)', 'Allocated (PKR)', 'Shares', 'Actual Cost (PKR)', 'Leftover (PKR)'];
+        const rows = lastStocks.map(s => [
+            s.symbol,
+            s.name,
+            s.adjWeight.toFixed(2),
+            s.price > 0 ? s.price.toFixed(2) : '',
+            s.investment.toFixed(2),
+            s.shares !== null ? s.shares : '',
+            s.actualCost !== null ? s.actualCost.toFixed(2) : '',
+            s.leftover !== null ? s.leftover.toFixed(2) : '',
+        ]);
+
+        const totalShares     = lastStocks.reduce((sum, s) => sum + (s.shares ?? 0), 0);
+        const totalActualCost = lastStocks.reduce((sum, s) => sum + (s.actualCost ?? 0), 0);
+        const totalLeftover   = lastStocks.reduce((sum, s) => sum + (s.leftover ?? 0), 0);
+        const totals = ['TOTAL', '', '100.00', '', lastAmount.toFixed(2), totalShares, totalActualCost.toFixed(2), totalLeftover.toFixed(2)];
+
+        const tsv = [headers, ...rows, totals].map(r => r.join('\t')).join('\n');
+
+        await navigator.clipboard.writeText(tsv);
+
+        const btn = document.getElementById('btnCopy');
+        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg> Copied!`;
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy Table`;
+            btn.classList.remove('copied');
+        }, 2000);
+    }
+
     function updateStockCount() {
         const n = document.getElementById('stockCount').value;
         document.getElementById('stockCountBadge').textContent = `Top ${n}`;
@@ -1023,6 +1093,8 @@ All 15 rows will be extracted automatically."></textarea>
         document.getElementById('statLeftover').textContent   = fmtPKR(totalLeftover);
         document.getElementById('chartCenterVal').textContent = fmtPKR(amount);
 
+        lastStocks = stocks;
+        lastAmount = amount;
         renderTable(stocks, amount);
         renderChart(stocks, amount);
 
