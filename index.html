@@ -355,7 +355,7 @@
         /* Chart + Table grid */
         .results-grid {
             display: grid;
-            grid-template-columns: 360px 1fr;
+            grid-template-columns: 230px 1fr;
             gap: 1.25rem;
         }
 
@@ -374,8 +374,8 @@
 
         .chart-wrapper {
             position: relative;
-            width: 260px;
-            height: 260px;
+            width: 170px;
+            height: 170px;
             margin: 0.5rem 0;
         }
 
@@ -395,10 +395,11 @@
         }
 
         .chart-center-label .cl-value {
-            font-size: 1rem;
+            font-size: 0.72rem;
             font-weight: 700;
             color: var(--accent-gold);
-            margin-top: 0.2rem;
+            margin-top: 0.15rem;
+            white-space: nowrap;
         }
 
         .chart-legend {
@@ -427,14 +428,14 @@
         .legend-sym {
             font-weight: 700;
             color: var(--text-primary);
-            min-width: 62px;
-            font-size: 0.72rem;
+            flex: 1;
+            font-size: 0.7rem;
             font-family: monospace;
         }
 
         .legend-pct {
-            margin-left: auto;
             color: var(--text-secondary);
+            font-size: 0.7rem;
             font-variant-numeric: tabular-nums;
         }
 
@@ -448,11 +449,11 @@
         }
 
         .table-scroll {
-            overflow-x: auto;
+            overflow-x: hidden;
         }
 
         .table-header-bar {
-            padding: 1.2rem 1.5rem;
+            padding: 1rem 1.25rem;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
@@ -475,13 +476,13 @@
         }
 
         thead th {
-            padding: 0.7rem 1.25rem;
+            padding: 0.6rem 0.75rem;
             text-align: left;
-            font-size: 0.68rem;
+            font-size: 0.63rem;
             font-weight: 700;
             color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 0.07em;
+            letter-spacing: 0.06em;
             background: rgba(0, 0, 0, 0.2);
             white-space: nowrap;
         }
@@ -496,8 +497,8 @@
         tbody tr:hover { background: var(--bg-card-hover); }
 
         tbody td {
-            padding: 0.8rem 1.25rem;
-            font-size: 0.85rem;
+            padding: 0.65rem 0.75rem;
+            font-size: 0.8rem;
             vertical-align: middle;
         }
 
@@ -523,8 +524,8 @@
 
         .company-name {
             color: var(--text-secondary);
-            font-size: 0.8rem;
-            max-width: 220px;
+            font-size: 0.78rem;
+            max-width: 160px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -582,7 +583,7 @@
 
         /* Footer row */
         tfoot td {
-            padding: 0.85rem 1.25rem;
+            padding: 0.7rem 0.75rem;
             font-size: 0.82rem;
             background: rgba(0,0,0,0.25);
             border-top: 2px solid var(--border-light);
@@ -678,7 +679,7 @@
         @media (max-width: 1100px) {
             .results-grid { grid-template-columns: 1fr; }
             .chart-card { flex-direction: row; flex-wrap: wrap; gap: 1rem; }
-            .chart-wrapper { width: 200px; height: 200px; }
+            .chart-wrapper { width: 170px; height: 170px; }
         }
 
         @media (max-width: 1200px) {
@@ -1124,7 +1125,6 @@ All 15 rows will be extracted automatically."></textarea>
             <div class="legend-item">
                 <div class="legend-dot" style="background:${PALETTE[i]};"></div>
                 <span class="legend-sym">${escHtml(s.symbol)}</span>
-                <span style="color:var(--text-primary); font-size:0.72rem; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(s.name)}</span>
                 <span class="legend-pct">${s.adjWeight.toFixed(2)}%</span>
             </div>
         `).join('');
